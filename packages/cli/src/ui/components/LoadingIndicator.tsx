@@ -100,7 +100,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
         alignItems={isNarrow ? 'flex-start' : 'center'}
       >
         <Box>
-          <Box marginRight={1}>
+          <Box marginRight={primaryText ? 1 : 0}>
             <GeminiRespondingSpinner
               nonRespondingDisplay={
                 streamingState === StreamingState.WaitingForConfirmation
