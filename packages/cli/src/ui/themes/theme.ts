@@ -56,6 +56,7 @@ export interface CustomTheme {
   ui?: {
     comment?: string;
     symbol?: string;
+    spinner?: string;
     gradient?: string[];
   };
   status?: {
@@ -191,6 +192,7 @@ export class Theme {
       ui: {
         comment: this.colors.Gray,
         symbol: this.colors.AccentCyan,
+        spinner: '#D14D72',
         gradient: this.colors.GradientColors,
       },
       status: {
@@ -451,6 +453,7 @@ export function createCustomTheme(customTheme: CustomTheme): Theme {
     ui: {
       comment: customTheme.ui?.comment ?? colors.Comment,
       symbol: customTheme.ui?.symbol ?? colors.Gray,
+      spinner: customTheme.ui?.spinner ?? '#D14D72',
       gradient: customTheme.ui?.gradient ?? colors.GradientColors,
     },
     status: {
