@@ -16,6 +16,9 @@ export const MEMORY_WARNING_THRESHOLD = 7 * 1024 * 1024 * 1024; // 7GB in bytes
 export const MEMORY_UI_COMPACT_THRESHOLD = Math.floor(
   v8.getHeapStatistics().heap_size_limit * 0.65,
 ); // 65% of V8 heap limit
+export const MEMORY_PHYSICAL_DELETE_THRESHOLD = Math.floor(
+  v8.getHeapStatistics().heap_size_limit * 0.9,
+); // 90% of V8 heap limit
 export const MEMORY_CHECK_INTERVAL = 60 * 1000; // one minute
 export const MEMORY_DEBUG_INTERVAL = 30 * 1000; // 30 seconds for debug logging
 export const UI_COMPACT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -23,13 +26,17 @@ export const UI_COMPACT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 interface MemoryMonitorOptions {
   addItem: (item: HistoryItemWithoutId, timestamp: number) => void;
   compactOldItems?: () => void;
+  physicalDeleteBeforeCompression?: () => void;
 }
 
 export const useMemoryMonitor = ({
   addItem,
   compactOldItems,
+  physicalDeleteBeforeCompression,
 }: MemoryMonitorOptions) => {
   const lastCompactRef = useRef(0);
+  const shouldPhysicallyDeleteRef = useRef(false);
+  const physicalDeleteConsumedRef = useRef(false);
 
   useEffect(() => {
     // Debug logging + UI compaction interval — runs every 30 s, never cleared.
@@ -69,6 +76,34 @@ export const useMemoryMonitor = ({
         );
         compactOldItems();
       }
+
+      // Set physical delete flag when heap exceeds 90% threshold (once per session)
+      if (
+        !physicalDeleteConsumedRef.current &&
+        memUsage.heapUsed > MEMORY_PHYSICAL_DELETE_THRESHOLD
+      ) {
+        if (!shouldPhysicallyDeleteRef.current) {
+          shouldPhysicallyDeleteRef.current = true;
+          debugLogger.debug(
+            `[PHYSICAL_DELETE_FLAG] heapUsed=${heapUsed.toFixed(1)}MB ` +
+              `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD / 1024 / 1024).toFixed(0)}MB threshold, ` +
+              `flagging for physical delete before compression marker`,
+          );
+        }
+      }
+
+      // Consume the physical delete flag (once only)
+      if (
+        shouldPhysicallyDeleteRef.current &&
+        physicalDeleteBeforeCompression
+      ) {
+        shouldPhysicallyDeleteRef.current = false;
+        physicalDeleteConsumedRef.current = true;
+        debugLogger.debug(
+          `[PHYSICAL_DELETE_CONSUME] executing physical delete before compression marker`,
+        );
+        physicalDeleteBeforeCompression();
+      }
     }, MEMORY_DEBUG_INTERVAL);
 
     // Warning interval — warns once then self-destructs.
@@ -99,5 +134,5 @@ export const useMemoryMonitor = ({
       clearInterval(debugIntervalId);
       clearInterval(warningIntervalId);
     };
-  }, [addItem, compactOldItems]);
+  }, [addItem, compactOldItems, physicalDeleteBeforeCompression]);
 };

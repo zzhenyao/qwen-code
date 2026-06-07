@@ -11,6 +11,7 @@ import {
   MEMORY_CHECK_INTERVAL,
   MEMORY_WARNING_THRESHOLD,
   MEMORY_UI_COMPACT_THRESHOLD,
+  MEMORY_PHYSICAL_DELETE_THRESHOLD,
   MEMORY_DEBUG_INTERVAL,
   UI_COMPACT_COOLDOWN_MS,
 } from './useMemoryMonitor.js';
@@ -140,5 +141,71 @@ describe('useMemoryMonitor', () => {
     } as NodeJS.MemoryUsage);
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     expect(compactOldItems).toHaveBeenCalledTimes(1);
+  });
+
+  it('should set flag and call physicalDelete when heapUsed exceeds 90% threshold', () => {
+    const physicalDeleteBeforeCompression = vi.fn();
+    memoryUsageSpy.mockReturnValue({
+      rss: 1024,
+      heapUsed: MEMORY_PHYSICAL_DELETE_THRESHOLD + 1,
+      heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD * 2,
+    } as NodeJS.MemoryUsage);
+    renderHook(() =>
+      useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
+    );
+    // First interval: sets flag
+    vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
+    // Flag was set and consumed in the same interval
+    expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
+  });
+
+  it('should only consume physical delete flag once', () => {
+    const physicalDeleteBeforeCompression = vi.fn();
+    memoryUsageSpy.mockReturnValue({
+      rss: 1024,
+      heapUsed: MEMORY_PHYSICAL_DELETE_THRESHOLD + 1,
+      heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD * 2,
+    } as NodeJS.MemoryUsage);
+    renderHook(() =>
+      useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
+    );
+    // First interval: sets flag and consumes
+    vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
+    expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
+
+    // Second interval: flag already consumed, should not call again
+    vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
+    expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not call physicalDelete when heapUsed is below threshold', () => {
+    const physicalDeleteBeforeCompression = vi.fn();
+    memoryUsageSpy.mockReturnValue({
+      rss: 1024,
+      heapUsed: MEMORY_PHYSICAL_DELETE_THRESHOLD - 1,
+      heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD * 2,
+    } as NodeJS.MemoryUsage);
+    renderHook(() =>
+      useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
+    );
+    vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
+    expect(physicalDeleteBeforeCompression).not.toHaveBeenCalled();
+  });
+
+  it('should call physicalDelete only once even when heap stays high across multiple intervals', () => {
+    const physicalDeleteBeforeCompression = vi.fn();
+    memoryUsageSpy.mockReturnValue({
+      rss: 1024,
+      heapUsed: MEMORY_PHYSICAL_DELETE_THRESHOLD + 1,
+      heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD * 2,
+    } as NodeJS.MemoryUsage);
+    renderHook(() =>
+      useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
+    );
+    // Multiple intervals while heap stays high
+    vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
+    vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
+    vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
+    expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
   });
 });

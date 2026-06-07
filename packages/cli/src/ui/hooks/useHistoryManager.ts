@@ -30,6 +30,7 @@ export interface UseHistoryManagerReturn {
   loadHistory: (newHistory: HistoryItem[]) => void;
   truncateToItem: (itemId: number) => void;
   compactOldItems: () => void;
+  physicalDeleteBeforeCompression: () => void;
 }
 
 /**
@@ -214,6 +215,22 @@ export function useHistory(): UseHistoryManagerReturn {
     });
   }, []);
 
+  const physicalDeleteBeforeCompression = useCallback(() => {
+    setHistory((prev) => {
+      const compressionIndex = prev.findIndex(
+        (item) => item.type === 'compression',
+      );
+      if (compressionIndex <= 0) return prev;
+      const deleted = compressionIndex;
+      debugLogger.debug(
+        `[PHYSICAL_DELETE_BEFORE_COMPRESSION] deleted ${deleted} item(s) before first compression marker, ` +
+          `historyLength ${prev.length} -> ${prev.length - deleted}, ` +
+          `memory=${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}MB`,
+      );
+      return prev.slice(compressionIndex);
+    });
+  }, []);
+
   return useMemo(
     () => ({
       history,
@@ -223,6 +240,7 @@ export function useHistory(): UseHistoryManagerReturn {
       loadHistory,
       truncateToItem,
       compactOldItems,
+      physicalDeleteBeforeCompression,
     }),
     [
       history,
@@ -232,6 +250,7 @@ export function useHistory(): UseHistoryManagerReturn {
       loadHistory,
       truncateToItem,
       compactOldItems,
+      physicalDeleteBeforeCompression,
     ],
   );
 }

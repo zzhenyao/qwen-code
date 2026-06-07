@@ -648,4 +648,152 @@ describe('useHistoryManager', () => {
       expect(result.current.history).toBe(before);
     });
   });
+
+  describe('physicalDeleteBeforeCompression', () => {
+    it('should delete items before first compression marker', () => {
+      const { result } = renderHook(() => useHistory());
+      const ts = Date.now();
+
+      // Add 5 items, then a compression marker, then 3 more items
+      for (let i = 0; i < 5; i++) {
+        act(() => {
+          result.current.addItem(
+            { type: 'user', text: `old-${i}` } as HistoryItemWithoutId,
+            ts + i,
+          );
+        });
+      }
+      act(() => {
+        result.current.addItem(
+          {
+            type: 'compression',
+            compression: {
+              isPending: false,
+              originalTokenCount: 1000,
+              newTokenCount: 500,
+              compressionStatus: null,
+            },
+          } as HistoryItemWithoutId,
+          ts + 5,
+        );
+      });
+      for (let i = 0; i < 3; i++) {
+        act(() => {
+          result.current.addItem(
+            { type: 'user', text: `new-${i}` } as HistoryItemWithoutId,
+            ts + 6 + i,
+          );
+        });
+      }
+
+      expect(result.current.history).toHaveLength(9); // 5 + 1 compression + 3
+
+      act(() => {
+        result.current.physicalDeleteBeforeCompression();
+      });
+
+      // Should keep compression marker + 3 new items
+      expect(result.current.history).toHaveLength(4);
+      expect(result.current.history[0].type).toBe('compression');
+      expect(result.current.history[1]).toEqual(
+        expect.objectContaining({ text: 'new-0' }),
+      );
+    });
+
+    it('should not delete when no compression marker exists', () => {
+      const { result } = renderHook(() => useHistory());
+      const ts = Date.now();
+
+      for (let i = 0; i < 5; i++) {
+        act(() => {
+          result.current.addItem(
+            { type: 'user', text: `item-${i}` } as HistoryItemWithoutId,
+            ts + i,
+          );
+        });
+      }
+
+      const before = result.current.history;
+
+      act(() => {
+        result.current.physicalDeleteBeforeCompression();
+      });
+
+      // No compression marker — nothing should be deleted
+      expect(result.current.history).toBe(before);
+    });
+
+    it('should not delete when compression marker is the first item', () => {
+      const { result } = renderHook(() => useHistory());
+      const ts = Date.now();
+
+      act(() => {
+        result.current.addItem(
+          {
+            type: 'compression',
+            compression: {
+              isPending: false,
+              originalTokenCount: 1000,
+              newTokenCount: 500,
+              compressionStatus: null,
+            },
+          } as HistoryItemWithoutId,
+          ts,
+        );
+      });
+      for (let i = 0; i < 3; i++) {
+        act(() => {
+          result.current.addItem(
+            { type: 'user', text: `item-${i}` } as HistoryItemWithoutId,
+            ts + 1 + i,
+          );
+        });
+      }
+
+      const before = result.current.history;
+
+      act(() => {
+        result.current.physicalDeleteBeforeCompression();
+      });
+
+      // compressionIndex is 0, nothing to delete before it
+      expect(result.current.history).toBe(before);
+    });
+
+    it('should delete all items before compression when it is the last item', () => {
+      const { result } = renderHook(() => useHistory());
+      const ts = Date.now();
+
+      for (let i = 0; i < 5; i++) {
+        act(() => {
+          result.current.addItem(
+            { type: 'user', text: `item-${i}` } as HistoryItemWithoutId,
+            ts + i,
+          );
+        });
+      }
+      act(() => {
+        result.current.addItem(
+          {
+            type: 'compression',
+            compression: {
+              isPending: false,
+              originalTokenCount: 1000,
+              newTokenCount: 500,
+              compressionStatus: null,
+            },
+          } as HistoryItemWithoutId,
+          ts + 5,
+        );
+      });
+
+      act(() => {
+        result.current.physicalDeleteBeforeCompression();
+      });
+
+      // Only the compression marker should remain
+      expect(result.current.history).toHaveLength(1);
+      expect(result.current.history[0].type).toBe('compression');
+    });
+  });
 });
