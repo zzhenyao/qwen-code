@@ -506,6 +506,9 @@ export class MemoryPressureMonitor extends EventEmitter {
         try {
           const client = this.coreConfig.getGeminiClient?.();
           if (!client?.isInitialized?.()) {
+            debugLogger.debug(
+              '[COMPACT_HISTORY] skipped: client not initialized',
+            );
             break;
           }
           const chat = client.getChat();
@@ -513,7 +516,10 @@ export class MemoryPressureMonitor extends EventEmitter {
           const settings = this.coreConfig.getClearContextOnIdle();
           const result = microcompactHistory(history, Date.now() - 1, {
             ...settings,
-            toolResultsThresholdMinutes: 0,
+            toolResultsThresholdMinutes:
+              (settings.toolResultsThresholdMinutes ?? 0) < 0
+                ? settings.toolResultsThresholdMinutes
+                : 0,
           });
           if (result.meta) {
             chat.setHistory(result.history);

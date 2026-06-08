@@ -6,19 +6,25 @@
 
 import { useEffect, useRef } from 'react';
 import process from 'node:process';
+import os from 'node:os';
 import v8 from 'v8';
 import { createDebugLogger } from '@qwen-code/qwen-code-core';
 import { type HistoryItemWithoutId, MessageType } from '../types.js';
 
 const debugLogger = createDebugLogger('MEMORY_MONITOR');
 
-export const MEMORY_WARNING_THRESHOLD = 7 * 1024 * 1024 * 1024; // 7GB in bytes
-export const MEMORY_UI_COMPACT_THRESHOLD = Math.floor(
-  v8.getHeapStatistics().heap_size_limit * 0.65,
-); // 65% of V8 heap limit
-export const MEMORY_PHYSICAL_DELETE_THRESHOLD = Math.floor(
-  v8.getHeapStatistics().heap_size_limit * 0.9,
-); // 90% of V8 heap limit
+// Warn at the lower of 7 GB or 85% of system RAM — prevents OOM on
+// machines with less than ~8 GB while keeping the threshold high enough
+// on larger systems to avoid false positives.
+export const MEMORY_WARNING_THRESHOLD = Math.min(
+  7 * 1024 * 1024 * 1024,
+  Math.floor(os.totalmem() * 0.85),
+);
+// Recomputed on each check — V8 grows heap_size_limit dynamically
+export const MEMORY_UI_COMPACT_THRESHOLD = () =>
+  Math.floor(v8.getHeapStatistics().heap_size_limit * 0.65);
+export const MEMORY_PHYSICAL_DELETE_THRESHOLD = () =>
+  Math.floor(v8.getHeapStatistics().heap_size_limit * 0.9);
 export const MEMORY_CHECK_INTERVAL = 60 * 1000; // one minute
 export const MEMORY_DEBUG_INTERVAL = 30 * 1000; // 30 seconds for debug logging
 export const UI_COMPACT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -51,42 +57,46 @@ export const useMemoryMonitor = ({
       const external = memUsage.external / 1024 / 1024;
       const arrayBuffers = memUsage.arrayBuffers / 1024 / 1024;
 
-      debugLogger.debug(
-        `[MEMORY_USAGE] ` +
-          `heapUsed=${heapUsed.toFixed(1)}MB, ` +
-          `heapTotal=${heapTotal.toFixed(1)}MB, ` +
-          `rss=${rss.toFixed(1)}MB, ` +
-          `external=${external.toFixed(1)}MB, ` +
-          `arrayBuffers=${arrayBuffers.toFixed(1)}MB, ` +
-          `heapUtilization=${((heapUsed / heapTotal) * 100).toFixed(1)}%`,
-      );
+      if (debugLogger.isEnabled()) {
+        debugLogger.debug(
+          `[MEMORY_USAGE] ` +
+            `heapUsed=${heapUsed.toFixed(1)}MB, ` +
+            `heapTotal=${heapTotal.toFixed(1)}MB, ` +
+            `rss=${rss.toFixed(1)}MB, ` +
+            `external=${external.toFixed(1)}MB, ` +
+            `arrayBuffers=${arrayBuffers.toFixed(1)}MB, ` +
+            `heapUtilization=${((heapUsed / heapTotal) * 100).toFixed(1)}%`,
+        );
+      }
 
       // UI history compaction when heap exceeds threshold
       const now = Date.now();
       if (
         compactOldItems &&
-        memUsage.heapUsed > MEMORY_UI_COMPACT_THRESHOLD &&
+        memUsage.heapUsed > MEMORY_UI_COMPACT_THRESHOLD() &&
         now - lastCompactRef.current > UI_COMPACT_COOLDOWN_MS
       ) {
         lastCompactRef.current = now;
-        debugLogger.debug(
-          `[UI_COMPACT] heapUsed=${heapUsed.toFixed(1)}MB ` +
-            `exceeds ${(MEMORY_UI_COMPACT_THRESHOLD / 1024 / 1024).toFixed(0)}MB threshold, ` +
-            `compacting UI history`,
-        );
+        if (debugLogger.isEnabled()) {
+          debugLogger.debug(
+            `[UI_COMPACT] heapUsed=${heapUsed.toFixed(1)}MB ` +
+              `exceeds ${(MEMORY_UI_COMPACT_THRESHOLD() / 1024 / 1024).toFixed(0)}MB threshold, ` +
+              `compacting UI history`,
+          );
+        }
         compactOldItems();
       }
 
       // Set physical delete flag when heap exceeds 90% threshold (once per session)
       if (
         !physicalDeleteConsumedRef.current &&
-        memUsage.heapUsed > MEMORY_PHYSICAL_DELETE_THRESHOLD
+        memUsage.heapUsed > MEMORY_PHYSICAL_DELETE_THRESHOLD()
       ) {
         if (!shouldPhysicallyDeleteRef.current) {
           shouldPhysicallyDeleteRef.current = true;
           debugLogger.debug(
             `[PHYSICAL_DELETE_FLAG] heapUsed=${heapUsed.toFixed(1)}MB ` +
-              `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD / 1024 / 1024).toFixed(0)}MB threshold, ` +
+              `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD() / 1024 / 1024).toFixed(0)}MB threshold, ` +
               `flagging for physical delete before compression marker`,
           );
         }
