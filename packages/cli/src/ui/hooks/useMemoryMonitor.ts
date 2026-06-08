@@ -115,6 +115,11 @@ export const useMemoryMonitor = ({
           `[PHYSICAL_DELETE_CONSUME] executing physical delete before compression marker`,
         );
         physicalDeleteBeforeCompression();
+        debugLogger.debug(
+          `[PHYSICAL_DELETE] heapUsed=${heapUsed.toFixed(1)}MB ` +
+            `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD() / 1024 / 1024).toFixed(0)}MB threshold, ` +
+            `physical delete completed`,
+        );
       }
     }, MEMORY_DEBUG_INTERVAL);
 
