@@ -159,7 +159,7 @@ describe('useMemoryMonitor', () => {
     expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
   });
 
-  it('should only consume physical delete flag once', () => {
+  it('should retry physicalDelete every interval while heap stays above threshold', () => {
     const physicalDeleteBeforeCompression = vi.fn();
     memoryUsageSpy.mockReturnValue({
       rss: 1024,
@@ -173,9 +173,9 @@ describe('useMemoryMonitor', () => {
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
 
-    // Second interval: flag already consumed, should not call again
+    // Second interval: heap still high, flag re-set and consumed again
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
-    expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
+    expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(2);
   });
 
   it('should not call physicalDelete when heapUsed is below threshold', () => {
@@ -192,7 +192,7 @@ describe('useMemoryMonitor', () => {
     expect(physicalDeleteBeforeCompression).not.toHaveBeenCalled();
   });
 
-  it('should call physicalDelete only once even when heap stays high across multiple intervals', () => {
+  it('should call physicalDelete every interval while heap stays above threshold', () => {
     const physicalDeleteBeforeCompression = vi.fn();
     memoryUsageSpy.mockReturnValue({
       rss: 1024,
@@ -206,6 +206,6 @@ describe('useMemoryMonitor', () => {
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
-    expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
+    expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(3);
   });
 });

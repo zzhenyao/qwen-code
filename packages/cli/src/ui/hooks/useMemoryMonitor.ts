@@ -42,7 +42,6 @@ export const useMemoryMonitor = ({
 }: MemoryMonitorOptions) => {
   const lastCompactRef = useRef(0);
   const shouldPhysicallyDeleteRef = useRef(false);
-  const physicalDeleteConsumedRef = useRef(false);
 
   useEffect(() => {
     // Debug logging + UI compaction interval — runs every 30 s, never cleared.
@@ -87,28 +86,25 @@ export const useMemoryMonitor = ({
         compactOldItems();
       }
 
-      // Set physical delete flag when heap exceeds 90% threshold (once per session)
+      // Set physical delete flag when heap exceeds 90% threshold
       if (
-        !physicalDeleteConsumedRef.current &&
+        !shouldPhysicallyDeleteRef.current &&
         memUsage.heapUsed > MEMORY_PHYSICAL_DELETE_THRESHOLD()
       ) {
-        if (!shouldPhysicallyDeleteRef.current) {
-          shouldPhysicallyDeleteRef.current = true;
-          debugLogger.debug(
-            `[PHYSICAL_DELETE_FLAG] heapUsed=${heapUsed.toFixed(1)}MB ` +
-              `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD() / 1024 / 1024).toFixed(0)}MB threshold, ` +
-              `flagging for physical delete before compression marker`,
-          );
-        }
+        shouldPhysicallyDeleteRef.current = true;
+        debugLogger.debug(
+          `[PHYSICAL_DELETE_FLAG] heapUsed=${heapUsed.toFixed(1)}MB ` +
+            `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD() / 1024 / 1024).toFixed(0)}MB threshold, ` +
+            `flagging for physical delete before compression marker`,
+        );
       }
 
-      // Consume the physical delete flag (once only)
+      // Consume the physical delete flag
       if (
         shouldPhysicallyDeleteRef.current &&
         physicalDeleteBeforeCompression
       ) {
         shouldPhysicallyDeleteRef.current = false;
-        physicalDeleteConsumedRef.current = true;
         debugLogger.debug(
           `[PHYSICAL_DELETE_CONSUME] executing physical delete before compression marker`,
         );
