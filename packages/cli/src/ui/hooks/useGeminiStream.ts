@@ -12,21 +12,22 @@ import {
   useMemo,
   useLayoutEffect,
 } from 'react';
-import type {
-  Config,
-  EditorType,
-  GeminiClient,
-  Logger,
-  RetryInfo,
-  ServerGeminiChatCompressedEvent,
-  ServerGeminiContentEvent as ContentEvent,
-  ServerGeminiFinishedEvent,
-  ServerGeminiStreamEvent as GeminiEvent,
-  ThoughtSummary,
-  ToolCallRequestInfo,
-  GeminiErrorEventValue,
-  StopFailureErrorType,
-  ActiveGoal,
+import {
+  type Config,
+  type EditorType,
+  type GeminiClient,
+  type Logger,
+  type RetryInfo,
+  type ServerGeminiChatCompressedEvent,
+  type ServerGeminiContentEvent as ContentEvent,
+  type ServerGeminiFinishedEvent,
+  type ServerGeminiStreamEvent as GeminiEvent,
+  type ThoughtSummary,
+  type ToolCallRequestInfo,
+  type GeminiErrorEventValue,
+  type StopFailureErrorType,
+  type ActiveGoal,
+  CompressionStatus,
 } from '@qwen-code/qwen-code-core';
 import {
   GeminiEventType as ServerGeminiEventType,
@@ -1231,7 +1232,9 @@ export const useGeminiStream = (
         eventValue?.triggerReason === 'image_overflow'
           ? `accumulated enough tool screenshots to trigger compaction for ${config.getModel()}`
           : `approached the input token limit for ${config.getModel()}`;
-      return addItem(
+
+      // Add user-visible info message
+      addItem(
         {
           type: 'info',
           text:
@@ -1239,6 +1242,20 @@ export const useGeminiStream = (
             `A compressed context will be sent for future messages (compressed from: ` +
             `${eventValue?.originalTokenCount ?? 'unknown'} to ` +
             `${eventValue?.newTokenCount ?? 'unknown'} tokens).`,
+        },
+        Date.now(),
+      );
+
+      // Add compression marker for physicalDeleteBeforeCompression to find
+      addItem(
+        {
+          type: 'compression',
+          compression: {
+            isPending: false,
+            originalTokenCount: eventValue?.originalTokenCount ?? null,
+            newTokenCount: eventValue?.newTokenCount ?? null,
+            compressionStatus: CompressionStatus.COMPRESSED,
+          },
         },
         Date.now(),
       );
