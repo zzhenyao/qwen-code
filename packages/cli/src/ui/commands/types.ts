@@ -88,6 +88,8 @@ export interface CommandContext {
      * @param history The array of history items to load.
      */
     loadHistory: UseHistoryManagerReturn['loadHistory'];
+    /** Physically deletes history before the first compression marker. */
+    physicalDeleteBeforeCompression?: UseHistoryManagerReturn['physicalDeleteBeforeCompression'];
     toggleVimEnabled: () => Promise<boolean>;
     setGeminiMdFileCount: (count: number) => void;
     reloadCommands: () => void | Promise<void>;

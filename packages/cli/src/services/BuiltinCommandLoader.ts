@@ -49,6 +49,7 @@ import { quitCommand } from '../ui/commands/quitCommand.js';
 import { recapCommand } from '../ui/commands/recapCommand.js';
 import { renameCommand } from '../ui/commands/renameCommand.js';
 import { restoreCommand } from '../ui/commands/restoreCommand.js';
+import { testPhysicalDeleteCommand } from '../ui/commands/testPhysicalDeleteCommand.js';
 import { resumeCommand } from '../ui/commands/resumeCommand.js';
 import { rewindCommand } from '../ui/commands/rewindCommand.js';
 import { settingsCommand } from '../ui/commands/settingsCommand.js';
@@ -137,6 +138,7 @@ export class BuiltinCommandLoader implements ICommandLoader {
       recapCommand,
       renameCommand,
       restoreCommand(this.config),
+      testPhysicalDeleteCommand,
       resumeCommand,
       rewindCommand,
       skillsCommand,

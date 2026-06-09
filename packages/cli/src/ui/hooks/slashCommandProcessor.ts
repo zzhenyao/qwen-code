@@ -148,6 +148,7 @@ export const useSlashCommandProcessor = (
   logger: Logger | null,
   updateItem: UseHistoryManagerReturn['updateItem'],
   setSessionName?: (name: string | null) => void,
+  physicalDeleteBeforeCompression?: UseHistoryManagerReturn['physicalDeleteBeforeCompression'],
 ) => {
   const { stats: sessionStats, startNewSession } = useSessionStats();
   const [commands, setCommands] = useState<readonly SlashCommand[]>([]);
@@ -355,6 +356,7 @@ export const useSlashCommandProcessor = (
         dispatchExtensionStateUpdate: actions.dispatchExtensionStateUpdate,
         addConfirmUpdateExtensionRequest:
           actions.addConfirmUpdateExtensionRequest,
+        physicalDeleteBeforeCompression,
       },
       session: {
         stats: sessionStats,
@@ -387,6 +389,7 @@ export const useSlashCommandProcessor = (
       setSessionName,
       extensionsUpdateState,
       isIdleRef,
+      physicalDeleteBeforeCompression,
     ],
   );
 

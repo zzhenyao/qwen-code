@@ -1206,6 +1206,7 @@ export const AppContainer = (props: AppContainerProps) => {
     logger,
     historyManager.updateItem,
     setSessionName,
+    historyManager.physicalDeleteBeforeCompression,
   );
 
   // onDebugMessage should log to debug logfile, not update footer debugMessage
