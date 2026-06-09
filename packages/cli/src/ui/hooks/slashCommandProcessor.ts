@@ -149,9 +149,14 @@ export const useSlashCommandProcessor = (
   updateItem: UseHistoryManagerReturn['updateItem'],
   setSessionName?: (name: string | null) => void,
   physicalDeleteBeforeCompression?: UseHistoryManagerReturn['physicalDeleteBeforeCompression'],
+  getHistory?: UseHistoryManagerReturn['getHistory'],
 ) => {
   const { stats: sessionStats, startNewSession } = useSessionStats();
   const [commands, setCommands] = useState<readonly SlashCommand[]>([]);
+  const [allSlashCommands, setAllSlashCommands] = useState<
+    readonly SlashCommand[]
+  >([]);
+  const commandServiceRef = useRef<CommandService | null>(null);
   const [recentCommands, setRecentCommands] = useState<
     ReadonlyMap<string, RecentSlashCommand>
   >(new Map());
@@ -357,6 +362,7 @@ export const useSlashCommandProcessor = (
         addConfirmUpdateExtensionRequest:
           actions.addConfirmUpdateExtensionRequest,
         physicalDeleteBeforeCompression,
+        getHistory,
       },
       session: {
         stats: sessionStats,
@@ -390,6 +396,7 @@ export const useSlashCommandProcessor = (
       extensionsUpdateState,
       isIdleRef,
       physicalDeleteBeforeCompression,
+      getHistory,
     ],
   );
 
@@ -465,6 +472,7 @@ export const useSlashCommandProcessor = (
         if (controller.signal.aborted) {
           return;
         }
+        commandServiceRef.current = commandService;
         // Register model-invocable commands provider so SkillTool can include
         // bundled skills, file commands, and MCP prompts in its description.
         if (config) {
@@ -536,6 +544,9 @@ export const useSlashCommandProcessor = (
           );
         }
         setCommands(commandService.getCommandsForMode('interactive'));
+        setAllSlashCommands(
+          commandService.getCommandsForMode('interactive', true),
+        );
       } catch (error) {
         debugLogger.error('Failed to load slash commands:', error);
       } finally {
@@ -608,11 +619,17 @@ export const useSlashCommandProcessor = (
 
       let hasError = false;
       let delegatedToRecursiveInvocation = false;
+      // Use the full command list (including hidden commands) for parsing
+      // so that hidden commands like /test-physical-delete can still be
+      // executed when typed directly.
+      const allCommands =
+        commandServiceRef.current?.getCommandsForMode('interactive', true) ??
+        commands;
       const {
         commandToExecute,
         args,
         canonicalPath: resolvedCommandPath,
-      } = parseSlashCommand(trimmed, commands);
+      } = parseSlashCommand(trimmed, allCommands);
 
       const subcommand =
         resolvedCommandPath.length > 1
@@ -1078,6 +1095,7 @@ export const useSlashCommandProcessor = (
   return {
     handleSlashCommand,
     slashCommands: commands,
+    allSlashCommands,
     recentSlashCommands: recentCommands,
     pendingHistoryItems,
     btwItem,

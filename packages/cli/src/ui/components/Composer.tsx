@@ -142,6 +142,7 @@ export const Composer = () => {
           onClearScreen={uiActions.handleClearScreen}
           config={config}
           slashCommands={uiState.slashCommands}
+          allSlashCommands={uiState.allSlashCommands}
           commandContext={uiState.commandContext}
           recentSlashCommands={uiState.recentSlashCommands}
           shellModeActive={uiState.shellModeActive}

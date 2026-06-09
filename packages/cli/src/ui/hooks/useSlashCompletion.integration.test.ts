@@ -40,6 +40,7 @@ function useTestHarnessForSlashCompletion(
     enabled,
     query,
     slashCommands,
+    allSlashCommands: slashCommands,
     commandContext,
     setSuggestions,
     setIsLoadingSuggestions,

@@ -652,7 +652,7 @@ describe('useHistoryManager', () => {
   });
 
   describe('physicalDeleteBeforeCompression', () => {
-    it('should delete items before first compression marker', () => {
+    it('should delete all items except compression marker', () => {
       const { result } = renderHook(() => useHistory());
       const ts = Date.now();
 
@@ -694,12 +694,9 @@ describe('useHistoryManager', () => {
         result.current.physicalDeleteBeforeCompression();
       });
 
-      // Should keep compression marker + 3 new items
-      expect(result.current.history).toHaveLength(4);
-      expect(result.current.history[0].type).toBe('compression');
-      expect(result.current.history[1]).toEqual(
-        expect.objectContaining({ text: 'new-0' }),
-      );
+      // First marker and everything before it deleted, remaining 3 items after marker
+      expect(result.current.history).toHaveLength(3);
+      expect(result.current.history[0].type).toBe('user');
     });
 
     it('should not delete when no compression marker exists', () => {
@@ -725,7 +722,7 @@ describe('useHistoryManager', () => {
       expect(result.current.history).toBe(before);
     });
 
-    it('should not delete when compression marker is the first item', () => {
+    it('should delete items after compression marker when it is the first item', () => {
       const { result } = renderHook(() => useHistory());
       const ts = Date.now();
 
@@ -752,14 +749,15 @@ describe('useHistoryManager', () => {
         });
       }
 
-      const before = result.current.history;
+      expect(result.current.history).toHaveLength(4);
 
       act(() => {
         result.current.physicalDeleteBeforeCompression();
       });
 
-      // compressionIndex is 0, nothing to delete before it
-      expect(result.current.history).toBe(before);
+      // Marker at index 0 deleted, remaining 3 items after
+      expect(result.current.history).toHaveLength(3);
+      expect(result.current.history[0].type).toBe('user');
     });
 
     it('should delete all items before compression when it is the last item', () => {
@@ -793,9 +791,83 @@ describe('useHistoryManager', () => {
         result.current.physicalDeleteBeforeCompression();
       });
 
-      // Only the compression marker should remain
-      expect(result.current.history).toHaveLength(1);
-      expect(result.current.history[0].type).toBe('compression');
+      // Marker at last position (index 5) deleted, history becomes empty
+      expect(result.current.history).toHaveLength(0);
+    });
+
+    it('should keep only the first compression marker when multiple exist', () => {
+      const { result } = renderHook(() => useHistory());
+      const ts = Date.now();
+
+      // First compression marker at index 0
+      act(() => {
+        result.current.addItem(
+          {
+            type: 'compression',
+            compression: {
+              isPending: false,
+              originalTokenCount: 1000,
+              newTokenCount: 500,
+              compressionStatus: null,
+            },
+          } as HistoryItemWithoutId,
+          ts,
+        );
+      });
+
+      // 5 items after first marker
+      for (let i = 0; i < 5; i++) {
+        act(() => {
+          result.current.addItem(
+            { type: 'user', text: `mid-${i}` } as HistoryItemWithoutId,
+            ts + 1 + i,
+          );
+        });
+      }
+
+      // Second compression marker
+      act(() => {
+        result.current.addItem(
+          {
+            type: 'compression',
+            compression: {
+              isPending: false,
+              originalTokenCount: 800,
+              newTokenCount: 400,
+              compressionStatus: null,
+            },
+          } as HistoryItemWithoutId,
+          ts + 6,
+        );
+      });
+
+      // 3 items after second marker
+      for (let i = 0; i < 3; i++) {
+        act(() => {
+          result.current.addItem(
+            { type: 'user', text: `new-${i}` } as HistoryItemWithoutId,
+            ts + 7 + i,
+          );
+        });
+      }
+
+      // Total: 1 + 5 + 1 + 3 = 10
+      expect(result.current.history).toHaveLength(10);
+
+      act(() => {
+        result.current.physicalDeleteBeforeCompression();
+      });
+
+      // First marker (index 0) deleted, remaining: 5 mid + 1 marker + 3 new = 9
+      expect(result.current.history).toHaveLength(9);
+      expect(result.current.history[0].type).toBe('user');
+      expect(result.current.history[0].text).toBe('mid-0');
+      // The second marker is now at index 5
+      expect(result.current.history[5].type).toBe('compression');
+      expect(
+        (result.current.history[5] as HistoryItemWithoutId).compression
+          ?.newTokenCount,
+      ).toBe(400);
     });
   });
 });

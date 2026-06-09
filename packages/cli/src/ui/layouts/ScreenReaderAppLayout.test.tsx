@@ -58,6 +58,7 @@ const baseUIState: Partial<UIState> = {
     truncateToItem: vi.fn(),
     compactOldItems: vi.fn(),
     physicalDeleteBeforeCompression: vi.fn(),
+    getHistory: vi.fn(),
   },
   stickyTodos: [
     {

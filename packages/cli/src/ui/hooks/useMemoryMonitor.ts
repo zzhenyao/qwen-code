@@ -32,7 +32,7 @@ export const UI_COMPACT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 interface MemoryMonitorOptions {
   addItem: (item: HistoryItemWithoutId, timestamp: number) => void;
   compactOldItems?: () => void;
-  physicalDeleteBeforeCompression?: () => void;
+  physicalDeleteBeforeCompression?: () => number;
 }
 
 export const useMemoryMonitor = ({
@@ -114,9 +114,9 @@ export const useMemoryMonitor = ({
         debugLogger.debug(
           `[PHYSICAL_DELETE_CONSUME] executing physical delete before compression marker`,
         );
-        physicalDeleteBeforeCompression();
+        const deleted = physicalDeleteBeforeCompression();
         debugLogger.debug(
-          `[PHYSICAL_DELETE] heapUsed=${heapUsed.toFixed(1)}MB ` +
+          `[PHYSICAL_DELETE] deleted=${deleted}, heapUsed=${heapUsed.toFixed(1)}MB ` +
             `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD() / 1024 / 1024).toFixed(0)}MB threshold, ` +
             `physical delete completed`,
         );

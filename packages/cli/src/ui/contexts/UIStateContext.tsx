@@ -68,6 +68,7 @@ export interface UIState {
   isHelpDialogOpen: boolean;
   activeHelpTab: HelpTab;
   slashCommands: readonly SlashCommand[];
+  allSlashCommands: readonly SlashCommand[];
   recentSlashCommands: RecentSlashCommands;
   pendingSlashCommandHistoryItems: HistoryItemWithoutId[];
   commandContext: CommandContext;

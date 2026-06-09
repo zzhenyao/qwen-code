@@ -76,6 +76,7 @@ export interface InputPromptProps {
   onClearScreen: () => void;
   config: Config;
   slashCommands: readonly SlashCommand[];
+  allSlashCommands: readonly SlashCommand[];
   commandContext: CommandContext;
   recentSlashCommands?: RecentSlashCommands;
   placeholder?: string;
@@ -128,6 +129,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
   slashCommands,
   commandContext,
   recentSlashCommands,
+  allSlashCommands,
   placeholder,
   focus = true,
   suggestionsWidth,
@@ -244,6 +246,7 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
     buffer,
     config.getTargetDir(),
     slashCommands,
+    allSlashCommands,
     commandContext,
     reverseSearchActive,
     config,

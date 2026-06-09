@@ -131,12 +131,17 @@ export class CommandService {
 
   /**
    * Returns commands available in the specified execution mode.
-   * Hidden commands are excluded.
+   * Hidden commands are excluded unless `includeHidden` is true.
    */
-  getCommandsForMode(mode: ExecutionMode): readonly SlashCommand[] {
+  getCommandsForMode(
+    mode: ExecutionMode,
+    includeHidden = false,
+  ): readonly SlashCommand[] {
     return Object.freeze(
       filterCommandsForMode(
-        this.commands.filter((cmd) => !cmd.hidden),
+        includeHidden
+          ? this.commands
+          : this.commands.filter((cmd) => !cmd.hidden),
         mode,
       ),
     );

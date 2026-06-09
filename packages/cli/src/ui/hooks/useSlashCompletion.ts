@@ -558,6 +558,7 @@ function useCompletionPositions(
 
 function usePerfectMatch(
   parserResult: CommandParserResult,
+  allSlashCommands: readonly SlashCommand[],
 ): PerfectMatchResult {
   return useMemo(() => {
     const { hasTrailingSpace, partial, leafCommand, currentLevel } =
@@ -571,6 +572,7 @@ function usePerfectMatch(
       return { isPerfectMatch: true };
     }
 
+    // Check currentLevel (from slashCommands, non-hidden)
     if (currentLevel) {
       const perfectMatch = currentLevel.find(
         (cmd) => matchesCommand(cmd, partial) && cmd.action,
@@ -580,14 +582,26 @@ function usePerfectMatch(
       }
     }
 
+    // Also check allSlashCommands (includes hidden) for exact matches
+    // This allows hidden commands like /test-pd to be recognized as perfect matches
+    if (allSlashCommands) {
+      const perfectMatch = allSlashCommands.find(
+        (cmd) => matchesCommand(cmd, partial) && cmd.action,
+      );
+      if (perfectMatch) {
+        return { isPerfectMatch: true };
+      }
+    }
+
     return { isPerfectMatch: false };
-  }, [parserResult]);
+  }, [parserResult, allSlashCommands]);
 }
 
 export interface UseSlashCompletionProps {
   enabled: boolean;
   query: string | null;
   slashCommands: readonly SlashCommand[];
+  allSlashCommands: readonly SlashCommand[];
   commandContext: CommandContext;
   recentCommands?: RecentSlashCommands;
   setSuggestions: (suggestions: Suggestion[]) => void;
@@ -603,6 +617,7 @@ export function useSlashCompletion(props: UseSlashCompletionProps): {
     enabled,
     query,
     slashCommands,
+    allSlashCommands,
     commandContext,
     recentCommands,
     setSuggestions,
@@ -730,7 +745,7 @@ export function useSlashCompletion(props: UseSlashCompletionProps): {
     query,
     parserResult,
   );
-  const { isPerfectMatch } = usePerfectMatch(parserResult);
+  const { isPerfectMatch } = usePerfectMatch(parserResult, allSlashCommands);
 
   // Clear internal state when disabled
   useEffect(() => {

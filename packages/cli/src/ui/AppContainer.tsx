@@ -299,7 +299,10 @@ const SHELL_HEIGHT_PADDING = 10;
 
 export const AppContainer = (props: AppContainerProps) => {
   const { settings, config, initializationResult } = props;
-  const historyManager = useHistory();
+  const onAfterPhysicalDeleteRef = useRef<(() => void) | undefined>(undefined);
+  const historyManager = useHistory({
+    onAfterPhysicalDelete: () => onAfterPhysicalDeleteRef.current?.(),
+  });
   // `useHistory()` returns a fresh memoized object whenever `history` changes,
   // so depending on `historyManager` directly inside event-handler callbacks
   // would rebuild them on every message. Mirror history into a ref so
@@ -863,6 +866,7 @@ export const AppContainer = (props: AppContainerProps) => {
     }
     remountStaticHistory();
   }, [useTerminalBuffer, remountStaticHistory, stdout]);
+  onAfterPhysicalDeleteRef.current = refreshStatic;
 
   // Targeted repaint for resize events: move cursor to top-left and erase
   // downward instead of a full clearTerminal, avoiding the full-screen
@@ -1179,6 +1183,7 @@ export const AppContainer = (props: AppContainerProps) => {
   const {
     handleSlashCommand,
     slashCommands,
+    allSlashCommands,
     recentSlashCommands,
     pendingHistoryItems: pendingSlashCommandHistoryItems,
     btwItem,
@@ -1207,6 +1212,7 @@ export const AppContainer = (props: AppContainerProps) => {
     historyManager.updateItem,
     setSessionName,
     historyManager.physicalDeleteBeforeCompression,
+    historyManager.getHistory,
   );
 
   // onDebugMessage should log to debug logfile, not update footer debugMessage
@@ -3267,6 +3273,7 @@ export const AppContainer = (props: AppContainerProps) => {
       isHelpDialogOpen,
       activeHelpTab,
       slashCommands,
+      allSlashCommands,
       recentSlashCommands,
       pendingSlashCommandHistoryItems,
       commandContext,
@@ -3394,6 +3401,7 @@ export const AppContainer = (props: AppContainerProps) => {
       isHelpDialogOpen,
       activeHelpTab,
       slashCommands,
+      allSlashCommands,
       recentSlashCommands,
       pendingSlashCommandHistoryItems,
       commandContext,
