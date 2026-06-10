@@ -283,6 +283,11 @@ export function useHistory(options?: {
     // New history: everything after first marker (can be empty)
     const next = prev.slice(firstMarkerIdx + 1);
 
+    setHistory(next);
+    options?.onAfterPhysicalDelete?.();
+    if (typeof global.gc === 'function') {
+      global.gc();
+    }
     if (debugLogger.isEnabled()) {
       debugLogger.debug(
         `[PHYSICAL_DELETE] markerIdx=${firstMarkerIdx}, ` +
@@ -292,12 +297,13 @@ export function useHistory(options?: {
           `memory=${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}MB`,
       );
     }
-    setHistory(next);
-    options?.onAfterPhysicalDelete?.();
     return deleted;
   }, [setHistory, options]);
 
-  const getHistory = useCallback((): readonly HistoryItem[] => historyRef.current, []);
+  const getHistory = useCallback(
+    (): readonly HistoryItem[] => historyRef.current,
+    [],
+  );
 
   return useMemo(
     () => ({

@@ -865,8 +865,11 @@ describe('useHistoryManager', () => {
       // The second marker is now at index 5
       expect(result.current.history[5].type).toBe('compression');
       expect(
-        (result.current.history[5] as HistoryItemWithoutId).compression
-          ?.newTokenCount,
+        (
+          result.current.history[5] as unknown as {
+            compression: { newTokenCount: number };
+          }
+        ).compression?.newTokenCount,
       ).toBe(400);
     });
   });
