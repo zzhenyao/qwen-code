@@ -157,11 +157,11 @@ describe('useMemoryMonitor', () => {
     expect(compactOldItems).toHaveBeenCalledTimes(1);
   });
 
-  it('should set flag and call physicalDelete when heapUsed exceeds 90% threshold', () => {
+  it('should set flag and call physicalDelete when rss exceeds 80% threshold', () => {
     const physicalDeleteBeforeCompression = vi.fn();
     memoryUsageSpy.mockReturnValue({
-      rss: 1024,
-      heapUsed: MEMORY_PHYSICAL_DELETE_THRESHOLD() + 1,
+      rss: MEMORY_PHYSICAL_DELETE_THRESHOLD() + 1,
+      heapUsed: 1024,
       heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD() * 2,
     } as NodeJS.MemoryUsage);
     renderHook(() =>
@@ -173,11 +173,11 @@ describe('useMemoryMonitor', () => {
     expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
   });
 
-  it('should retry physicalDelete every interval while heap stays above threshold', () => {
+  it('should retry physicalDelete every interval while rss stays above threshold', () => {
     const physicalDeleteBeforeCompression = vi.fn();
     memoryUsageSpy.mockReturnValue({
-      rss: 1024,
-      heapUsed: MEMORY_PHYSICAL_DELETE_THRESHOLD() + 1,
+      rss: MEMORY_PHYSICAL_DELETE_THRESHOLD() + 1,
+      heapUsed: 1024,
       heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD() * 2,
     } as NodeJS.MemoryUsage);
     renderHook(() =>
@@ -187,16 +187,16 @@ describe('useMemoryMonitor', () => {
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(1);
 
-    // Second interval: heap still high, flag re-set and consumed again
+    // Second interval: rss still high, flag re-set and consumed again
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(2);
   });
 
-  it('should not call physicalDelete when heapUsed is below threshold', () => {
+  it('should not call physicalDelete when rss is below threshold', () => {
     const physicalDeleteBeforeCompression = vi.fn();
     memoryUsageSpy.mockReturnValue({
-      rss: 1024,
-      heapUsed: MEMORY_PHYSICAL_DELETE_THRESHOLD() - 1,
+      rss: MEMORY_PHYSICAL_DELETE_THRESHOLD() - 1,
+      heapUsed: 1024,
       heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD() * 2,
     } as NodeJS.MemoryUsage);
     renderHook(() =>
@@ -206,17 +206,17 @@ describe('useMemoryMonitor', () => {
     expect(physicalDeleteBeforeCompression).not.toHaveBeenCalled();
   });
 
-  it('should call physicalDelete every interval while heap stays above threshold', () => {
+  it('should call physicalDelete every interval while rss stays above threshold', () => {
     const physicalDeleteBeforeCompression = vi.fn();
     memoryUsageSpy.mockReturnValue({
-      rss: 1024,
-      heapUsed: MEMORY_PHYSICAL_DELETE_THRESHOLD() + 1,
+      rss: MEMORY_PHYSICAL_DELETE_THRESHOLD() + 1,
+      heapUsed: 1024,
       heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD() * 2,
     } as NodeJS.MemoryUsage);
     renderHook(() =>
       useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
     );
-    // Multiple intervals while heap stays high
+    // Multiple intervals while rss stays high
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
