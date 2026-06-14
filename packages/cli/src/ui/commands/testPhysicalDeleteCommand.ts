@@ -89,9 +89,26 @@ export const testPhysicalDeleteCommand: SlashCommand = {
     }
 
     try {
+      const memBefore = process.memoryUsage();
+      debugLogger.debug(
+        `[TEST_PD] Before: heapUsed=${(memBefore.heapUsed / 1024 / 1024).toFixed(1)} MB, rss=${(memBefore.rss / 1024 / 1024).toFixed(1)} MB`,
+      );
+      // eslint-disable-next-line no-console
+      console.log(
+        `[test-pd] Before: heapUsed=${(memBefore.heapUsed / 1024 / 1024).toFixed(1)} MB, rss=${(memBefore.rss / 1024 / 1024).toFixed(1)} MB`,
+      );
       const deleted = physicalDelete();
-      debugLogger.debug(`[TEST_PD] physicalDelete returned: ${deleted}`);
-      debugLogger.debug('[TEST_PD] Action completed');
+
+      const memAfter = process.memoryUsage();
+      debugLogger.debug(
+        `[TEST_PD] After: heapUsed=${(memAfter.heapUsed / 1024 / 1024).toFixed(1)} MB, rss=${(memAfter.rss / 1024 / 1024).toFixed(1)} MB, deleted=${deleted}`,
+      );
+      // eslint-disable-next-line no-console
+      console.log(`[test-pd] physicalDelete returned: ${deleted}`);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[test-pd] After: heapUsed=${(memAfter.heapUsed / 1024 / 1024).toFixed(1)} MB, rss=${(memAfter.rss / 1024 / 1024).toFixed(1)} MB`,
+      );
     } catch (e) {
       debugLogger.error(
         `[TEST_PD] Error in physicalDelete: ${e instanceof Error ? e.message : String(e)}`,
