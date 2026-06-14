@@ -30,6 +30,10 @@ export interface UseHistoryManagerReturn {
   loadHistory: (newHistory: HistoryItem[]) => void;
   truncateToItem: (itemId: number) => void;
   compactOldItems: () => void;
+  /** Returns the number of items deleted, or 0 if nothing was deleted. */
+  physicalDeleteBeforeCompression: () => number;
+  /** Read-only snapshot of current history for debugging. */
+  getHistory: () => readonly HistoryItem[];
 }
 
 /**
@@ -38,8 +42,29 @@ export interface UseHistoryManagerReturn {
  * Encapsulates the history array, message ID generation, adding items,
  * updating items, and clearing the history.
  */
-export function useHistory(): UseHistoryManagerReturn {
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+export function useHistory(options?: {
+  onAfterPhysicalDelete?: () => void;
+}): UseHistoryManagerReturn {
+  const [history, setHistoryRaw] = useState<HistoryItem[]>([]);
+  const historyRef = useRef<HistoryItem[]>([]);
+
+  const setHistory = useCallback(
+    (updater: HistoryItem[] | ((prev: HistoryItem[]) => HistoryItem[])) => {
+      if (typeof updater !== 'function') {
+        historyRef.current = updater;
+      }
+      setHistoryRaw((prev) => {
+        const next =
+          typeof updater === 'function'
+            ? (updater as (p: HistoryItem[]) => HistoryItem[])(prev)
+            : updater;
+        historyRef.current = next;
+        return next;
+      });
+    },
+    [],
+  );
+
   const messageIdCounterRef = useRef(0);
 
   // Generates a unique message ID based on a timestamp and a counter.
@@ -48,9 +73,12 @@ export function useHistory(): UseHistoryManagerReturn {
     return baseTimestamp + messageIdCounterRef.current;
   }, []);
 
-  const loadHistory = useCallback((newHistory: HistoryItem[]) => {
-    setHistory(newHistory);
-  }, []);
+  const loadHistory = useCallback(
+    (newHistory: HistoryItem[]) => {
+      setHistory(newHistory);
+    },
+    [setHistory],
+  );
 
   // Adds a new item to the history state with a unique ID.
   const addItem = useCallback(
@@ -84,7 +112,7 @@ export function useHistory(): UseHistoryManagerReturn {
       });
       return id; // Return the generated ID (even if not added, to keep signature)
     },
-    [getNextMessageId],
+    [getNextMessageId, setHistory],
   );
 
   /**
@@ -120,7 +148,7 @@ export function useHistory(): UseHistoryManagerReturn {
         return nextHistory;
       });
     },
-    [],
+    [setHistory],
   );
 
   // Clears the entire history state and resets the ID counter.
@@ -132,15 +160,18 @@ export function useHistory(): UseHistoryManagerReturn {
     }
     setHistory([]);
     messageIdCounterRef.current = 0;
-  }, []);
+  }, [setHistory]);
 
   // Truncates history to exclude the item with the given ID and everything after it.
-  const truncateToItem = useCallback((itemId: number) => {
-    setHistory((prev) => {
-      const index = prev.findIndex((h) => h.id === itemId);
-      return index === -1 ? prev : prev.slice(0, index);
-    });
-  }, []);
+  const truncateToItem = useCallback(
+    (itemId: number) => {
+      setHistory((prev) => {
+        const index = prev.findIndex((h) => h.id === itemId);
+        return index === -1 ? prev : prev.slice(0, index);
+      });
+    },
+    [setHistory],
+  );
 
   const compactOldItems = useCallback(() => {
     setHistory((prev) => {
@@ -232,7 +263,47 @@ export function useHistory(): UseHistoryManagerReturn {
       }
       return thoughtRemoved > 0 || toolGroupsCompacted > 0 ? next : prev;
     });
-  }, []);
+  }, [setHistory]);
+
+  const physicalDeleteBeforeCompression = useCallback((): number => {
+    const prev = historyRef.current;
+
+    // Find ALL compression markers
+    const markerIndices: number[] = [];
+    prev.forEach((item, idx) => {
+      if (item.type === 'compression') markerIndices.push(idx);
+    });
+
+    if (markerIndices.length === 0) return 0;
+
+    // Delete from 0 to first marker (inclusive)
+    const firstMarkerIdx = markerIndices[0];
+    const deleted = firstMarkerIdx + 1; // +1 to include the marker itself
+
+    // New history: everything after first marker (can be empty)
+    const next = prev.slice(firstMarkerIdx + 1);
+
+    setHistory(next);
+    options?.onAfterPhysicalDelete?.();
+    if (typeof global.gc === 'function') {
+      global.gc();
+    }
+    if (debugLogger.isEnabled()) {
+      debugLogger.debug(
+        `[PHYSICAL_DELETE] markerIdx=${firstMarkerIdx}, ` +
+          `deleted=${deleted}, ` +
+          `historyLength ${prev.length} -> ${next.length}, ` +
+          `nextFirstType=${next[0]?.type ?? 'empty'}, ` +
+          `memory=${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)}MB`,
+      );
+    }
+    return deleted;
+  }, [setHistory, options]);
+
+  const getHistory = useCallback(
+    (): readonly HistoryItem[] => historyRef.current,
+    [],
+  );
 
   return useMemo(
     () => ({
@@ -243,6 +314,8 @@ export function useHistory(): UseHistoryManagerReturn {
       loadHistory,
       truncateToItem,
       compactOldItems,
+      physicalDeleteBeforeCompression,
+      getHistory,
     }),
     [
       history,
@@ -252,6 +325,8 @@ export function useHistory(): UseHistoryManagerReturn {
       loadHistory,
       truncateToItem,
       compactOldItems,
+      physicalDeleteBeforeCompression,
+      getHistory,
     ],
   );
 }
