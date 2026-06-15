@@ -93,6 +93,8 @@ export interface CommandContext {
     extensionsUpdateState: Map<string, ExtensionUpdateStatus>;
     dispatchExtensionStateUpdate: (action: ExtensionUpdateAction) => void;
     addConfirmUpdateExtensionRequest: (value: ConfirmationRequest) => void;
+    physicalDeleteBeforeCompression?: UseHistoryManagerReturn['physicalDeleteBeforeCompression'];
+    getHistory?: UseHistoryManagerReturn['getHistory'];
   };
   // Session-specific data
   session: {

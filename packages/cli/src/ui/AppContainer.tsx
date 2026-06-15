@@ -304,7 +304,10 @@ const SHELL_HEIGHT_PADDING = 10;
 
 export const AppContainer = (props: AppContainerProps) => {
   const { settings, config, initializationResult } = props;
-  const historyManager = useHistory();
+  const onAfterPhysicalDeleteRef = useRef<(() => void) | undefined>(undefined);
+  const historyManager = useHistory({
+    onAfterPhysicalDelete: () => onAfterPhysicalDeleteRef.current?.(),
+  });
   // `useHistory()` returns a fresh memoized object whenever `history` changes,
   // so depending on `historyManager` directly inside event-handler callbacks
   // would rebuild them on every message. Mirror history into a ref so
@@ -881,6 +884,7 @@ export const AppContainer = (props: AppContainerProps) => {
     }
     remountStaticHistory();
   }, [useTerminalBuffer, remountStaticHistory, stdout]);
+  onAfterPhysicalDeleteRef.current = refreshStatic;
 
   // Keep the static header in sync with model changes without polling.
   // Ink's <Static> output is append-only, so model changes must explicitly
@@ -1208,6 +1212,8 @@ export const AppContainer = (props: AppContainerProps) => {
     logger,
     historyManager.updateItem,
     setSessionName,
+    historyManager.physicalDeleteBeforeCompression,
+    historyManager.getHistory,
   );
 
   // onDebugMessage should log to debug logfile, not update footer debugMessage

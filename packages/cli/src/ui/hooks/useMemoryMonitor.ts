@@ -22,6 +22,8 @@ export const MEMORY_WARNING_THRESHOLD = Math.min(
 );
 export const MEMORY_UI_COMPACT_THRESHOLD = () =>
   Math.floor(v8.getHeapStatistics().heap_size_limit * 0.65);
+export const MEMORY_PHYSICAL_DELETE_THRESHOLD = () =>
+  Math.floor(v8.getHeapStatistics().heap_size_limit * 0.8);
 export const MEMORY_CHECK_INTERVAL = 60 * 1000; // one minute
 export const MEMORY_DEBUG_INTERVAL = 30 * 1000; // 30 seconds for debug logging
 export const UI_COMPACT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
@@ -30,14 +32,17 @@ interface MemoryMonitorOptions {
   addItem: (item: HistoryItemWithoutId, timestamp: number) => void;
   compactOldItems?: () => void;
   config: Config;
+  physicalDeleteBeforeCompression?: () => number;
 }
 
 export const useMemoryMonitor = ({
   addItem,
   compactOldItems,
   config,
+  physicalDeleteBeforeCompression,
 }: MemoryMonitorOptions) => {
   const lastCompactRef = useRef(0);
+  const shouldPhysicallyDeleteRef = useRef(false);
   const lastIntervalRunRef = useRef(Date.now());
 
   const runMemoryCheck = useCallback(() => {
@@ -84,8 +89,38 @@ export const useMemoryMonitor = ({
       }
     }
 
+    // Set physical delete flag when RSS exceeds 80% of heap_size_limit
+    // RSS is used (not heapUsed) because OOM killer looks at RSS, and V8's
+    // old_space may hold memory that doesn't get returned to the OS, causing
+    // RSS to grow beyond heapUsed.
+    if (
+      !shouldPhysicallyDeleteRef.current &&
+      memUsage.rss > MEMORY_PHYSICAL_DELETE_THRESHOLD()
+    ) {
+      shouldPhysicallyDeleteRef.current = true;
+      debugLogger.debug(
+        `[PHYSICAL_DELETE_FLAG] heapUsed=${heapUsed.toFixed(1)}MB, rss=${rss.toFixed(1)}MB ` +
+          `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD() / 1024 / 1024).toFixed(0)}MB threshold, ` +
+          `flagging for physical delete before compression marker`,
+      );
+    }
+
+    // Consume the physical delete flag
+    if (shouldPhysicallyDeleteRef.current && physicalDeleteBeforeCompression) {
+      shouldPhysicallyDeleteRef.current = false;
+      debugLogger.debug(
+        `[PHYSICAL_DELETE_CONSUME] executing physical delete before compression marker`,
+      );
+      const deleted = physicalDeleteBeforeCompression();
+      debugLogger.debug(
+        `[PHYSICAL_DELETE] deleted=${deleted}, heapUsed=${heapUsed.toFixed(1)}MB, rss=${rss.toFixed(1)}MB ` +
+          `exceeds ${(MEMORY_PHYSICAL_DELETE_THRESHOLD() / 1024 / 1024).toFixed(0)}MB threshold, ` +
+          `physical delete completed`,
+      );
+    }
+
     lastIntervalRunRef.current = Date.now();
-  }, [compactOldItems]);
+  }, [compactOldItems, physicalDeleteBeforeCompression]);
 
   useEffect(() => {
     // Debug logging + UI compaction interval — runs every 30 s, never cleared.

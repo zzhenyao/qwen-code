@@ -31,6 +31,7 @@ import type {
 import {
   GeminiEventType as ServerGeminiEventType,
   SendMessageType,
+  CompressionStatus,
   createDebugLogger,
   ToolNames,
   getErrorMessage,
@@ -1250,7 +1251,7 @@ export const useGeminiStream = (
         eventValue?.triggerReason === 'image_overflow'
           ? `accumulated enough tool screenshots to trigger compaction for ${config.getModel()}`
           : `approached the input token limit for ${config.getModel()}`;
-      return addItem(
+      addItem(
         {
           type: 'info',
           text:
@@ -1258,6 +1259,20 @@ export const useGeminiStream = (
             `A compressed context will be sent for future messages (compressed from: ` +
             `${eventValue?.originalTokenCount ?? 'unknown'} to ` +
             `${eventValue?.newTokenCount ?? 'unknown'} tokens).`,
+        },
+        Date.now(),
+      );
+
+      // Add compression marker for physicalDeleteBeforeCompression to find
+      addItem(
+        {
+          type: 'compression',
+          compression: {
+            isPending: false,
+            originalTokenCount: eventValue?.originalTokenCount ?? null,
+            newTokenCount: eventValue?.newTokenCount ?? null,
+            compressionStatus: CompressionStatus.COMPRESSED,
+          },
         },
         Date.now(),
       );
