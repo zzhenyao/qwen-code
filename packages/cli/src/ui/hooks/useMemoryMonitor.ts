@@ -30,12 +30,14 @@ interface MemoryMonitorOptions {
   addItem: (item: HistoryItemWithoutId, timestamp: number) => void;
   compactOldItems?: () => void;
   config: Config;
+  configInitialized?: boolean;
 }
 
 export const useMemoryMonitor = ({
   addItem,
   compactOldItems,
   config,
+  configInitialized,
 }: MemoryMonitorOptions) => {
   const lastCompactRef = useRef(0);
   const lastIntervalRunRef = useRef(Date.now());
@@ -137,5 +139,5 @@ export const useMemoryMonitor = ({
     return () => {
       monitor.setOnStarvationCallback(undefined);
     };
-  }, [config, runMemoryCheck]);
+  }, [config, runMemoryCheck, configInitialized]);
 };
