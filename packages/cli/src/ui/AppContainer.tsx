@@ -314,7 +314,6 @@ export const AppContainer = (props: AppContainerProps) => {
   // handlers can read the latest snapshot at call time without reactive deps.
   const historyRef = useRef(historyManager.history);
   historyRef.current = historyManager.history;
-  useMemoryMonitor({ ...historyManager, config });
   const [debugMessage, setDebugMessage] = useState<string>('');
   const [quittingMessages, setQuittingMessages] = useState<
     HistoryItem[] | null
@@ -423,6 +422,12 @@ export const AppContainer = (props: AppContainerProps) => {
   const [currentModel, setCurrentModel] = useState(() => config.getModel());
 
   const [isConfigInitialized, setConfigInitialized] = useState(false);
+
+  useMemoryMonitor({
+    ...historyManager,
+    config,
+    configInitialized: isConfigInitialized,
+  });
 
   const [userMessages, setUserMessages] = useState<string[]>([]);
 

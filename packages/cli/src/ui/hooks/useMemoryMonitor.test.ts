@@ -355,5 +355,44 @@ describe('useMemoryMonitor', () => {
 
       expect(mockSetOnStarvationCallback).toHaveBeenLastCalledWith(undefined);
     });
+
+    it('registers callback after configInitialized becomes true', () => {
+      memoryUsageSpy.mockReturnValue({
+        rss: 1024,
+        heapUsed: 100,
+        heapTotal: 200,
+      } as NodeJS.MemoryUsage);
+
+      // Mock config that returns undefined first, then a real monitor
+      let monitorAvailable = false;
+      const dynamicConfig = {
+        getMemoryPressureMonitor: () =>
+          monitorAvailable
+            ? { setOnStarvationCallback: mockSetOnStarvationCallback }
+            : undefined,
+      } as unknown as Config;
+
+      const { rerender } = renderHook(
+        ({ configInitialized }) =>
+          useMemoryMonitor({
+            addItem,
+            config: dynamicConfig,
+            configInitialized,
+          }),
+        { initialProps: { configInitialized: false } },
+      );
+
+      // Initially, callback should not be registered (monitor is undefined)
+      expect(mockSetOnStarvationCallback).not.toHaveBeenCalled();
+
+      // Simulate config.initialize() completing
+      monitorAvailable = true;
+      rerender({ configInitialized: true });
+
+      // Now callback should be registered
+      expect(mockSetOnStarvationCallback).toHaveBeenCalledWith(
+        expect.any(Function),
+      );
+    });
   });
 });

@@ -33,6 +33,7 @@ interface MemoryMonitorOptions {
   compactOldItems?: () => void;
   physicalDeleteBeforeCompression?: () => number;
   config: Config;
+  configInitialized?: boolean;
 }
 
 export const useMemoryMonitor = ({
@@ -40,6 +41,7 @@ export const useMemoryMonitor = ({
   compactOldItems,
   physicalDeleteBeforeCompression,
   config,
+  configInitialized,
 }: MemoryMonitorOptions) => {
   const lastCompactRef = useRef(0);
   const shouldPhysicallyDeleteRef = useRef(false);
@@ -172,5 +174,5 @@ export const useMemoryMonitor = ({
     return () => {
       monitor.setOnStarvationCallback(undefined);
     };
-  }, [config, runMemoryCheck]);
+  }, [config, runMemoryCheck, configInitialized]);
 };
