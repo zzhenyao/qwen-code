@@ -2924,9 +2924,8 @@ export class CoreToolScheduler {
       // setToolSpan*; finalize without metadata to preserve that.
       this.finalizeToolSpan(callId);
       const monitor = this.memoryMonitor;
-      // eslint-disable-next-line no-console
-      console.error(
-        `[DEBUG] scheduleCheck called, monitor=${!!monitor}, tool=${scheduledCall.request.name}`,
+      debugLogger.debug(
+        `[MEMORY_HEARTBEAT] scheduleCheck called, monitor=${!!monitor}, tool=${scheduledCall.request.name}`,
       );
       monitor?.scheduleCheck();
     }
