@@ -207,73 +207,6 @@ describe('useMemoryMonitor', () => {
     expect(compactOldItems).toHaveBeenCalledTimes(2);
   });
 
-  describe('starvation heartbeat', () => {
-    it('triggers runMemoryCheck when interval has not run for > 60 s', () => {
-      memoryUsageSpy.mockReturnValue({
-        rss: 1024,
-        heapUsed: 100,
-        heapTotal: 200,
-      } as NodeJS.MemoryUsage);
-
-      // Freeze Date.now at hook-init time so we can control the elapsed
-      // time seen by the starvation callback independently of the timer
-      // queue (vi.advanceTimersByTime only advances the queue, not Date.now).
-      const initTime = 1_000_000;
-      let nowTime = initTime;
-      const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => nowTime);
-
-      renderHook(() => useMemoryMonitor({ addItem, config: mockConfig }));
-
-      const starvationCallback = mockSetOnStarvationCallback.mock.calls[0]![0]!;
-
-      // Advance the timer queue past 60 s WITHOUT firing intervals
-      // (Date.now is still frozen at initTime, so intervals see the same
-      // timestamp and their elapsed-time guard doesn't trip).
-      vi.advanceTimersByTime(61_000);
-
-      // Now jump Date.now forward so the starvation guard trips.
-      nowTime = initTime + 61_001;
-      memoryUsageSpy.mockClear();
-      starvationCallback();
-
-      // runMemoryCheck calls process.memoryUsage().
-      expect(memoryUsageSpy).toHaveBeenCalled();
-
-      dateSpy.mockRestore();
-    });
-
-    it('skips runMemoryCheck when interval ran recently', () => {
-      memoryUsageSpy.mockReturnValue({
-        rss: 1024,
-        heapUsed: 100,
-        heapTotal: 200,
-      } as NodeJS.MemoryUsage);
-      renderHook(() => useMemoryMonitor({ addItem, config: mockConfig }));
-
-      const starvationCallback = mockSetOnStarvationCallback.mock.calls[0]![0]!;
-
-      // Don't advance time — interval is fresh (just ran at init).
-      memoryUsageSpy.mockClear();
-      starvationCallback();
-
-      expect(memoryUsageSpy).not.toHaveBeenCalled();
-    });
-
-    it('unregisters callback on unmount', () => {
-      memoryUsageSpy.mockReturnValue({
-        rss: 1024,
-        heapUsed: 100,
-        heapTotal: 200,
-      } as NodeJS.MemoryUsage);
-      const { unmount } = renderHook(() =>
-        useMemoryMonitor({ addItem, config: mockConfig }),
-      );
-
-      unmount();
-
-      expect(mockSetOnStarvationCallback).toHaveBeenLastCalledWith(undefined);
-    });
-  });
   it('should set flag and call physicalDelete when rss exceeds 80% threshold', () => {
     const physicalDeleteBeforeCompression = vi.fn();
     memoryUsageSpy.mockReturnValue({
@@ -354,5 +287,112 @@ describe('useMemoryMonitor', () => {
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     expect(physicalDeleteBeforeCompression).toHaveBeenCalledTimes(3);
+  });
+
+  describe('starvation heartbeat', () => {
+    it('triggers runMemoryCheck when interval has not run for > 60 s', () => {
+      memoryUsageSpy.mockReturnValue({
+        rss: 1024,
+        heapUsed: 100,
+        heapTotal: 200,
+      } as NodeJS.MemoryUsage);
+
+      // Freeze Date.now at hook-init time so we can control the elapsed
+      // time seen by the starvation callback independently of the timer
+      // queue (vi.advanceTimersByTime only advances the queue, not Date.now).
+      const initTime = 1_000_000;
+      let nowTime = initTime;
+      const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => nowTime);
+
+      renderHook(() => useMemoryMonitor({ addItem, config: mockConfig }));
+
+      const starvationCallback = mockSetOnStarvationCallback.mock.calls[0]![0]!;
+
+      // Advance the timer queue past 60 s WITHOUT firing intervals
+      // (Date.now is still frozen at initTime, so intervals see the same
+      // timestamp and their elapsed-time guard doesn't trip).
+      vi.advanceTimersByTime(61_000);
+
+      // Now jump Date.now forward so the starvation guard trips.
+      nowTime = initTime + 61_001;
+      memoryUsageSpy.mockClear();
+      starvationCallback();
+
+      // runMemoryCheck calls process.memoryUsage().
+      expect(memoryUsageSpy).toHaveBeenCalled();
+
+      dateSpy.mockRestore();
+    });
+
+    it('skips runMemoryCheck when interval ran recently', () => {
+      memoryUsageSpy.mockReturnValue({
+        rss: 1024,
+        heapUsed: 100,
+        heapTotal: 200,
+      } as NodeJS.MemoryUsage);
+      renderHook(() => useMemoryMonitor({ addItem, config: mockConfig }));
+
+      const starvationCallback = mockSetOnStarvationCallback.mock.calls[0]![0]!;
+
+      // Don't advance time — interval is fresh (just ran at init).
+      memoryUsageSpy.mockClear();
+      starvationCallback();
+
+      expect(memoryUsageSpy).not.toHaveBeenCalled();
+    });
+
+    it('unregisters callback on unmount', () => {
+      memoryUsageSpy.mockReturnValue({
+        rss: 1024,
+        heapUsed: 100,
+        heapTotal: 200,
+      } as NodeJS.MemoryUsage);
+      const { unmount } = renderHook(() =>
+        useMemoryMonitor({ addItem, config: mockConfig }),
+      );
+
+      unmount();
+
+      expect(mockSetOnStarvationCallback).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it('registers callback after configInitialized becomes true', () => {
+      memoryUsageSpy.mockReturnValue({
+        rss: 1024,
+        heapUsed: 100,
+        heapTotal: 200,
+      } as NodeJS.MemoryUsage);
+
+      // Mock config that returns undefined first, then a real monitor
+      let monitorAvailable = false;
+      const dynamicConfig = {
+        getMemoryPressureMonitor: () =>
+          monitorAvailable
+            ? { setOnStarvationCallback: mockSetOnStarvationCallback }
+            : undefined,
+      } as unknown as Config;
+
+      const { rerender } = renderHook(
+        ({ configInitialized }) =>
+          useMemoryMonitor({
+            addItem,
+            config: dynamicConfig,
+            configInitialized,
+          }),
+        { initialProps: { configInitialized: false } },
+      );
+
+      // Initially, callback should not be registered (monitor is undefined)
+      expect(mockSetOnStarvationCallback).not.toHaveBeenCalled();
+
+      // Simulate config.initialize() completing
+      monitorAvailable = true;
+      rerender({ configInitialized: true });
+
+      // Now callback should be registered
+      expect(mockSetOnStarvationCallback).toHaveBeenCalledWith(
+        expect.any(Function),
+      );
+    });
   });
 });

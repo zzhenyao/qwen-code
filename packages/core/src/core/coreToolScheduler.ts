@@ -2945,7 +2945,11 @@ export class CoreToolScheduler {
       // _executeToolCallBody pre-sets status (OK / FAILURE / CANCELLED) via
       // setToolSpan*; finalize without metadata to preserve that.
       this.finalizeToolSpan(callId);
-      this.memoryMonitor?.scheduleCheck();
+      const monitor = this.memoryMonitor;
+      debugLogger.debug(
+        `[MEMORY_HEARTBEAT] scheduleCheck called, monitor=${!!monitor}, tool=${scheduledCall.request.name}`,
+      );
+      monitor?.scheduleCheck();
     }
   }
 

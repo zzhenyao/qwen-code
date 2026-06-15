@@ -31,15 +31,17 @@ export const UI_COMPACT_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 interface MemoryMonitorOptions {
   addItem: (item: HistoryItemWithoutId, timestamp: number) => void;
   compactOldItems?: () => void;
-  config: Config;
   physicalDeleteBeforeCompression?: () => number;
+  config: Config;
+  configInitialized?: boolean;
 }
 
 export const useMemoryMonitor = ({
   addItem,
   compactOldItems,
-  config,
   physicalDeleteBeforeCompression,
+  config,
+  configInitialized,
 }: MemoryMonitorOptions) => {
   const lastCompactRef = useRef(0);
   const shouldPhysicallyDeleteRef = useRef(false);
@@ -161,10 +163,17 @@ export const useMemoryMonitor = ({
   // hasn't run in that window either, force a full check.
   useEffect(() => {
     const monitor = config.getMemoryPressureMonitor();
+    debugLogger.debug(
+      `[HEARTBEAT] useEffect: monitor=${!!monitor}, configInitialized=${configInitialized}`,
+    );
     if (!monitor) return;
 
     monitor.setOnStarvationCallback(() => {
-      if (Date.now() - lastIntervalRunRef.current > 60_000) {
+      const elapsed = Date.now() - lastIntervalRunRef.current;
+      debugLogger.debug(
+        `[HEARTBEAT] onStarvationCallback triggered, elapsed=${elapsed}ms`,
+      );
+      if (elapsed > 60_000) {
         runMemoryCheck();
       }
     });
@@ -172,5 +181,5 @@ export const useMemoryMonitor = ({
     return () => {
       monitor.setOnStarvationCallback(undefined);
     };
-  }, [config, runMemoryCheck]);
+  }, [config, runMemoryCheck, configInitialized]);
 };
