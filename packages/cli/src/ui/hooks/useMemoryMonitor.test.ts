@@ -282,7 +282,11 @@ describe('useMemoryMonitor', () => {
       heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD() * 2,
     } as NodeJS.MemoryUsage);
     renderHook(() =>
-      useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
+      useMemoryMonitor({
+        addItem,
+        physicalDeleteBeforeCompression,
+        config: mockConfig,
+      }),
     );
     // First interval: sets flag
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
@@ -298,7 +302,11 @@ describe('useMemoryMonitor', () => {
       heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD() * 2,
     } as NodeJS.MemoryUsage);
     renderHook(() =>
-      useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
+      useMemoryMonitor({
+        addItem,
+        physicalDeleteBeforeCompression,
+        config: mockConfig,
+      }),
     );
     // First interval: sets flag and consumes
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
@@ -317,7 +325,11 @@ describe('useMemoryMonitor', () => {
       heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD() * 2,
     } as NodeJS.MemoryUsage);
     renderHook(() =>
-      useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
+      useMemoryMonitor({
+        addItem,
+        physicalDeleteBeforeCompression,
+        config: mockConfig,
+      }),
     );
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
     expect(physicalDeleteBeforeCompression).not.toHaveBeenCalled();
@@ -331,7 +343,11 @@ describe('useMemoryMonitor', () => {
       heapTotal: MEMORY_PHYSICAL_DELETE_THRESHOLD() * 2,
     } as NodeJS.MemoryUsage);
     renderHook(() =>
-      useMemoryMonitor({ addItem, physicalDeleteBeforeCompression }),
+      useMemoryMonitor({
+        addItem,
+        physicalDeleteBeforeCompression,
+        config: mockConfig,
+      }),
     );
     // Multiple intervals while rss stays high
     vi.advanceTimersByTime(MEMORY_DEBUG_INTERVAL);
