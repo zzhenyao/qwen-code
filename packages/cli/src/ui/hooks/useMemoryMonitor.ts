@@ -8,9 +8,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import process from 'node:process';
 import os from 'node:os';
 import v8 from 'v8';
-import { createDebugLogger } from '@qwen-code/qwen-code-core';
+import { createDebugLogger, type Config } from '@qwen-code/qwen-code-core';
 import { type HistoryItemWithoutId, MessageType } from '../types.js';
-import { useConfig } from '../contexts/ConfigContext.js';
 
 const debugLogger = createDebugLogger('MEMORY_MONITOR');
 
@@ -33,17 +32,18 @@ interface MemoryMonitorOptions {
   addItem: (item: HistoryItemWithoutId, timestamp: number) => void;
   compactOldItems?: () => void;
   physicalDeleteBeforeCompression?: () => number;
+  config: Config;
 }
 
 export const useMemoryMonitor = ({
   addItem,
   compactOldItems,
   physicalDeleteBeforeCompression,
+  config,
 }: MemoryMonitorOptions) => {
   const lastCompactRef = useRef(0);
   const shouldPhysicallyDeleteRef = useRef(false);
   const lastIntervalRunRef = useRef(Date.now());
-  const config = useConfig();
 
   const runMemoryCheck = useCallback(() => {
     const memUsage = process.memoryUsage();
@@ -163,14 +163,14 @@ export const useMemoryMonitor = ({
     const monitor = config.getMemoryPressureMonitor();
     if (!monitor) return;
 
-    monitor.setOnToolCompleteCallback(() => {
+    monitor.setOnStarvationCallback(() => {
       if (Date.now() - lastIntervalRunRef.current > 60_000) {
         runMemoryCheck();
       }
     });
 
     return () => {
-      monitor.setOnToolCompleteCallback(undefined);
+      monitor.setOnStarvationCallback(undefined);
     };
   }, [config, runMemoryCheck]);
 };
