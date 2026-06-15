@@ -140,7 +140,6 @@ import { acquireSleepInhibitor } from '../services/sleepInhibitor.js';
 const GATE_HEADROOM = 3000;
 const GATE_EXEMPT_TOOLS = new Set(['read_file']);
 
-
 function extractTextFromPartListUnion(c: PartListUnion): string {
   if (typeof c === 'string') return c;
   if (Array.isArray(c)) {
@@ -2924,7 +2923,12 @@ export class CoreToolScheduler {
       // _executeToolCallBody pre-sets status (OK / FAILURE / CANCELLED) via
       // setToolSpan*; finalize without metadata to preserve that.
       this.finalizeToolSpan(callId);
-      this.memoryMonitor?.scheduleCheck();
+      const monitor = this.memoryMonitor;
+      // eslint-disable-next-line no-console
+      console.error(
+        `[DEBUG] scheduleCheck called, monitor=${!!monitor}, tool=${scheduledCall.request.name}`,
+      );
+      monitor?.scheduleCheck();
     }
   }
 

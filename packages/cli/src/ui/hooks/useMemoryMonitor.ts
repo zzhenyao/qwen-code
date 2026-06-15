@@ -163,10 +163,19 @@ export const useMemoryMonitor = ({
   // hasn't run in that window either, force a full check.
   useEffect(() => {
     const monitor = config.getMemoryPressureMonitor();
+    // eslint-disable-next-line no-console
+    console.error(
+      `[DEBUG] useMemoryMonitor useEffect: monitor=${!!monitor}, configInitialized=${configInitialized}`,
+    );
     if (!monitor) return;
 
     monitor.setOnStarvationCallback(() => {
-      if (Date.now() - lastIntervalRunRef.current > 60_000) {
+      const elapsed = Date.now() - lastIntervalRunRef.current;
+      // eslint-disable-next-line no-console
+      console.error(
+        `[DEBUG] onStarvationCallback triggered, elapsed=${elapsed}ms`,
+      );
+      if (elapsed > 60_000) {
         runMemoryCheck();
       }
     });
